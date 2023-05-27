@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>WonderWord Game</title>
+
+</head>
+
+<body>
+    <h1>WonderWord Game</h1>
+    <h2 id="description"></h2>
+    <div id="word"></div>
+    <h3 id="revealed-word"></h3>
+    <h4 id="message"></h4>
+    <form id="myForm" method="POST" action="/start">
+        <input type="text" id="guess-input" placeholder="Enter a letter" autofocus>
+        <br>
+        <button id="submit-btn" onclick="submitGuess()">Submit</button>
+    </form>
+    <br>
+    <hr>
+
+    <script>
+
+
+        // Wonder Words Game
+        var ws;
+        var playerId;
+        var submitbtn = document.getElementById("submit-btn")
+        var guessInput = document.getElementById("guess-input");
+        var wordElement = document.getElementById("word");
+        var revealedWordElement = document.getElementById("revealed-word");
+        var descriptionElement = document.getElementById("description");
+        var message = document.getElementById("message")
+
+
+        // Disable input and button initially
+        guessInput.disabled = false;
+        submitbtn.disabled = false;
+
+        function connectWebSocket() {
+            ws = new WebSocket("ws://" + location.host + "/ws");
+
+            ws.onopen = function () {
+                console.log("WebSocket connection opened");
+            };
+
+            ws.onmessage = function (event) {
+                var gameState = JSON.parse(event.data);
+                updateGameState(gameState);
+            };
+
+            ws.onclose = function () {
+                console.log("WebSocket connection closed");
+            };
+        }
+
+        document.getElementById("myForm").addEventListener("submit", function (event) {
+            event.preventDefault();
+            var formData = new FormData(this);
+
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "/start");
+            xhr.onload = function () {
+
+                if (xhr.status === 200) {
+                    var response = JSON.parse(xhr.responseText);
+                    console.log(response);
+                } else {
+                    console.error("An error occurred.");
+                }
+            };
+            xhr.send(formData);
+        });
+
+        function submitGuess() {
+            var guess = guessInput.value.trim().toUpperCase();
+            if (guess.length !== 1) {
+                return;
+            }
+
+            var guessData = {
+                character: guess,
+                playerID: playerId,
+            };
+
+            ws.send(JSON.stringify(guessData));
+            guessInput.value = "";
+            location.reload();
+        }
+
+        function updateGameState(gameState) {
+            if (gameState.turn !== null && gameState.turn !== undefined) {
+                playerId = gameState.turn.toString();
+            }
+
+            revealedWordElement.innerHTML = "Revealed Word: " + gameState.revealedWord;
+            console.log(gameState)
+            descriptionElement.innerHTML = "Description: " + gameState.description;
+
+            message.innerHTML = gameState.message
+            if (gameState.word == '') {
+                guessInput.disabled = true;
+                submitbtn.disabled = true;
+                descriptionElement.style.display = "none"
+            }
+            if (gameState.Score !== undefined) {
+                var scoreElement = document.getElementById("score")
+                scoreElement.innerHTML = gameState.Score;
+            }
+        }
+
+        connectWebSocket();
+
+
+
+
+    </script>
+</body>
+
+</html>
